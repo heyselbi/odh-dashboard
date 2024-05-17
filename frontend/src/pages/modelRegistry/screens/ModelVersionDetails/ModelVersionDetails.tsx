@@ -26,7 +26,7 @@ const ModelVersionsDetails: React.FC<ModelVersionsDetailProps> = ({ tab, ...page
 
   const { modelVersionId: mvId, registeredModelId: rmId } = useParams();
   const [rm] = useRegisteredModelById(rmId);
-  const [mv, mvLoaded, mvLoadError] = useModelVersionById(mvId);
+  const [mv, mvLoaded, mvLoadError, refresh] = useModelVersionById(mvId);
 
   return (
     <ApplicationsPage
@@ -43,11 +43,13 @@ const ModelVersionsDetails: React.FC<ModelVersionsDetailProps> = ({ tab, ...page
           <BreadcrumbItem
             render={() => (
               <Link to={registeredModelUrl(rmId, preferredModelRegistry?.metadata.name)}>
-                {rm?.name}
+                {rm?.name || 'Loading...'}
               </Link>
             )}
           />
-          <BreadcrumbItem isActive>{mv?.name}</BreadcrumbItem>
+          <BreadcrumbItem data-testid="breadcrumb-version-name" isActive>
+            {mv?.name || 'Loading...'}
+          </BreadcrumbItem>
         </Breadcrumb>
       }
       title={mv?.name}
@@ -80,7 +82,7 @@ const ModelVersionsDetails: React.FC<ModelVersionsDetailProps> = ({ tab, ...page
       loaded={mvLoaded}
       provideChildrenPadding
     >
-      {mv !== null && <ModelVersionDetailsTabs tab={tab} modelVersion={mv} />}
+      {mv !== null && <ModelVersionDetailsTabs tab={tab} modelVersion={mv} refresh={refresh} />}
     </ApplicationsPage>
   );
 };

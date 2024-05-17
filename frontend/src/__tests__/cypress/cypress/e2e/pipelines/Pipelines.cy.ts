@@ -29,6 +29,8 @@ import { asProductAdminUser } from '~/__tests__/cypress/cypress/utils/users';
 import { mockSecretK8sResource } from '~/__mocks__/mockSecretK8sResource';
 import { PipelineKFv2 } from '~/concepts/pipelines/kfTypes';
 import { be } from '~/__tests__/cypress/cypress/utils/should';
+import { tablePagination } from '~/__tests__/cypress/cypress/pages/components/Pagination';
+import { mockSuccessGoogleRpcStatus } from '~/__mocks__/mockGoogleRpcStatusKF';
 
 const projectName = 'test-project-name';
 const initialMockPipeline = buildMockPipelineV2({ display_name: 'Test pipeline' });
@@ -393,7 +395,7 @@ describe('Pipelines', () => {
     initIntercepts({});
     pipelinesGlobal.visit(projectName);
     pipelinesTable.find();
-    pipelinesTable.getRowByName('Test pipeline').find().should('exist');
+    pipelinesTable.getRowById(initialMockPipeline.pipeline_id).find().should('exist');
   });
 
   describe('Table filtering and sorting', () => {
@@ -419,13 +421,13 @@ describe('Pipelines', () => {
       pipelinesTable.findFilterTextField().type('Test pipeline 1');
 
       pipelinesTable.mockGetPipelines(
-        mockPipelines.filter((mockpipeline) =>
-          mockpipeline.display_name.includes('Test pipeline 1'),
+        mockPipelines.filter((mockPipeline) =>
+          mockPipeline.display_name.includes('Test pipeline 1'),
         ),
         projectName,
       );
 
-      pipelinesTable.getRowByName('Test pipeline 1').find().should('exist');
+      pipelinesTable.getRowById(mockPipelines[0].pipeline_id).find().should('exist');
       pipelinesTable.findRows().should('have.length', 1);
     });
 
@@ -450,7 +452,7 @@ describe('Pipelines', () => {
       pipelinesTable.findRows().should('have.length', 2);
 
       pipelinesTable.mockGetPipelines(
-        mockPipelines.filter((mockpipeline) => mockpipeline.created_at.includes('2024-01-30')),
+        mockPipelines.filter((mockPipeline) => mockPipeline.created_at.includes('2024-01-30')),
         projectName,
       );
 
@@ -458,7 +460,7 @@ describe('Pipelines', () => {
       pipelinesTable.findFilterTextField().type('2024-01-30');
 
       pipelinesTable.findRows().should('have.length', 1);
-      pipelinesTable.getRowByName('Test pipeline 2').find().should('exist');
+      pipelinesTable.getRowById(mockPipelines[1].pipeline_id).find().should('exist');
     });
 
     it('table with no result found', () => {
@@ -467,10 +469,10 @@ describe('Pipelines', () => {
 
       pipelinesTable.selectFilterByName('Pipeline name');
       pipelinesTable.findFilterTextField().type('abc');
-      const mockPipeline = [initialMockPipeline];
+      const mockPipelines = [initialMockPipeline];
 
       pipelinesTable.mockGetPipelines(
-        mockPipeline.filter((mockpipeline) => mockpipeline.display_name.includes('abc')),
+        mockPipelines.filter((mockPipeline) => mockPipeline.display_name.includes('abc')),
         projectName,
       );
 
@@ -594,7 +596,7 @@ describe('Pipelines', () => {
     });
 
     // Verify the uploaded pipeline is in the table
-    pipelinesTable.getRowByName('New pipeline').find().should('exist');
+    pipelinesTable.getRowById(uploadedMockPipeline.pipeline_id).find().should('exist');
   });
 
   it('imports a new pipeline by url', () => {
@@ -644,7 +646,7 @@ describe('Pipelines', () => {
     cy.wait('@refreshPipelines');
 
     // Verify the uploaded pipeline is in the table
-    pipelinesTable.getRowByName('New pipeline').find().should('exist');
+    pipelinesTable.getRowById(createdMockPipeline.pipeline_id).find().should('exist');
   });
 
   it('uploads a new pipeline version', () => {
@@ -662,13 +664,15 @@ describe('Pipelines', () => {
     // Open the "Upload new version" modal
     pipelinesGlobal.findUploadVersionButton().click();
 
+    const uploadedMockPipelineVersion = buildMockPipelineVersionV2(uploadVersionParams);
+
     // Intercept upload/re-fetch of pipeline versions
     pipelineVersionImportModal
       .mockUploadVersion(uploadVersionParams, projectName)
       .as('uploadVersion');
     pipelinesTable
       .mockGetPipelineVersions(
-        [initialMockPipelineVersion, buildMockPipelineVersionV2(uploadVersionParams)],
+        [initialMockPipelineVersion, uploadedMockPipelineVersion],
         initialMockPipeline.pipeline_id,
         projectName,
       )
@@ -708,8 +712,12 @@ describe('Pipelines', () => {
     });
 
     // Verify the uploaded pipeline version is in the table
-    pipelinesTable.getRowByName('Test pipeline').toggleExpandByIndex(0);
-    pipelinesTable.getRowByName('New pipeline version').find().should('exist');
+    const pipelineRow = pipelinesTable.getRowById(initialMockPipeline.pipeline_id);
+    pipelineRow.findExpandButton().click();
+    pipelineRow
+      .getPipelineVersionRowById(uploadedMockPipelineVersion.pipeline_version_id)
+      .find()
+      .should('exist');
   });
 
   it('imports a new pipeline version by url', () => {
@@ -729,10 +737,12 @@ describe('Pipelines', () => {
     // Open the "Upload new version" modal
     pipelinesGlobal.findUploadVersionButton().click();
 
+    const uploadedMockPipelineVersion = buildMockPipelineVersionV2(createPipelineVersionParams);
+
     // Intercept upload/re-fetch of pipeline versions
     pipelinesTable
       .mockGetPipelineVersions(
-        [initialMockPipelineVersion, buildMockPipelineVersionV2(createPipelineVersionParams)],
+        [initialMockPipelineVersion, uploadedMockPipelineVersion],
         initialMockPipeline.pipeline_id,
         projectName,
       )
@@ -755,8 +765,12 @@ describe('Pipelines', () => {
     cy.wait('@refreshVersions');
 
     // Verify the uploaded pipeline version is in the table
-    pipelinesTable.getRowByName('Test pipeline').toggleExpandByIndex(0);
-    pipelinesTable.getRowByName('New pipeline version').find().should('exist');
+    const pipelineRow = pipelinesTable.getRowById(initialMockPipeline.pipeline_id);
+    pipelineRow.findExpandButton().click();
+    pipelineRow
+      .getPipelineVersionRowById(uploadedMockPipelineVersion.pipeline_version_id)
+      .find()
+      .should('exist');
   });
 
   it('delete a single pipeline', () => {
@@ -768,18 +782,19 @@ describe('Pipelines', () => {
 
     // Check pipeline
     pipelinesTable
-      .getRowByName(initialMockPipeline.display_name)
+      .getRowById(initialMockPipeline.pipeline_id)
       .findKebabAction('Delete pipeline')
       .click();
     pipelineDeleteModal.shouldBeOpen();
     pipelineDeleteModal.findInput().type(initialMockPipeline.display_name);
-    cy.intercept(
+    cy.interceptOdh(
+      'GET /api/service/pipelines/:namespace/:serviceName/apis/v2beta1/pipelines',
       {
-        method: 'GET',
-        pathname: `/api/service/pipelines/${projectName}/dspa/apis/v2beta1/pipelines`,
+        path: { namespace: projectName, serviceName: 'dspa' },
       },
       buildMockPipelines([]),
     ).as('refreshPipelines');
+
     pipelineDeleteModal.findSubmitButton().click();
 
     cy.wait('@deletePipeline');
@@ -800,24 +815,30 @@ describe('Pipelines', () => {
     pipelinesTable.find();
 
     // Check pipeline version
-    pipelinesTable.getRowByName(initialMockPipeline.display_name).toggleExpandByIndex(0);
-    pipelinesTable
-      .getRowByName(initialMockPipelineVersion.display_name)
+    const pipelineRow = pipelinesTable.getRowById(initialMockPipeline.pipeline_id);
+    pipelineRow.findExpandButton().click();
+    pipelineRow
+      .getPipelineVersionRowById(initialMockPipelineVersion.pipeline_version_id)
       .findKebabAction('Delete pipeline version')
       .click();
     pipelineDeleteModal.shouldBeOpen();
     pipelineDeleteModal.findInput().type(initialMockPipelineVersion.display_name);
-    cy.intercept(
+    cy.interceptOdh(
+      'GET /api/service/pipelines/:namespace/:serviceName/apis/v2beta1/pipelines/:pipelineId/versions',
       {
-        method: 'GET',
-        pathname: `/api/service/pipelines/${projectName}/dspa/apis/v2beta1/pipelines/${initialMockPipeline.pipeline_id}/versions`,
+        path: {
+          namespace: projectName,
+          serviceName: 'dspa',
+          pipelineId: initialMockPipeline.pipeline_id,
+        },
       },
       buildMockPipelineVersionsV2([]),
     ).as('refreshVersions');
+
     pipelineDeleteModal.findSubmitButton().click();
 
     cy.wait('@deleteVersion');
-    pipelinesTable.getRowByName(initialMockPipeline.display_name).toggleExpandByIndex(0);
+    pipelineRow.findExpandButton().click();
 
     cy.wait('@refreshVersions').then((interception) => {
       expect(interception.request.query).to.eql({
@@ -826,7 +847,7 @@ describe('Pipelines', () => {
         pipeline_id: 'test-pipeline',
       });
     });
-    pipelinesTable.getRowByName(initialMockPipeline.display_name).shouldNotHavePipelineVersion();
+    pipelineRow.shouldNotHavePipelineVersion();
   });
 
   it('navigate to pipeline version details page', () => {
@@ -835,10 +856,12 @@ describe('Pipelines', () => {
 
     // Wait for the pipelines table to load
     pipelinesTable.find();
-    pipelinesTable.getRowByName(initialMockPipeline.display_name).toggleExpandByIndex(0);
-    pipelinesTable
-      .getRowByName(initialMockPipelineVersion.display_name)
-      .findPipelineName(initialMockPipelineVersion.display_name)
+    const pipelineRow = pipelinesTable.getRowById(initialMockPipeline.pipeline_id);
+    pipelineRow.findExpandButton().click();
+
+    pipelineRow
+      .getPipelineVersionRowById(initialMockPipelineVersion.pipeline_version_id)
+      .findPipelineVersionLink()
       .click();
     verifyRelativeURL(
       `/pipelines/${projectName}/pipeline/view/${initialMockPipeline.pipeline_id}/${initialMockPipelineVersion.pipeline_version_id}`,
@@ -864,9 +887,15 @@ describe('Pipelines', () => {
       display_name: `${mockPipeline1.display_name} version 1`,
     });
 
+    const mockPipeline1Version2 = buildMockPipelineVersionV2({
+      pipeline_id: mockPipeline1.pipeline_id,
+      pipeline_version_id: 'test-pipeline-1-version-2',
+      display_name: `${mockPipeline1.display_name} version 2`,
+    });
+
     pipelinesTable.mockGetPipelines([mockPipeline1, mockPipeline2], projectName);
     pipelinesTable.mockGetPipelineVersions(
-      [mockPipeline1Version1],
+      [mockPipeline1Version1, mockPipeline1Version2],
       mockPipeline1.pipeline_id,
       projectName,
     );
@@ -879,12 +908,17 @@ describe('Pipelines', () => {
 
     pipelinesGlobal.visit(projectName);
 
-    // Check pipeline1 and one version in pipeline 2
-    pipelinesTable.getRowByName(mockPipeline1.display_name).toggleExpandByIndex(0);
-    pipelinesTable.getRowByName(mockPipeline2.display_name).toggleExpandByIndex(1);
+    // Check pipeline1 version 1 and pipeline 2
+    const pipelineRow1 = pipelinesTable.getRowById(mockPipeline1.pipeline_id);
+    pipelineRow1.findRowCheckbox().should('be.disabled');
+    pipelineRow1.findExpandButton().click();
+    pipelineRow1
+      .getPipelineVersionRowById(mockPipeline1Version1.pipeline_version_id)
+      .findRowCheckbox()
+      .check();
 
-    pipelinesTable.getRowByName(mockPipeline2.display_name).toggleCheckboxByRowName();
-    pipelinesTable.getRowByName(mockPipeline1Version1.display_name).toggleCheckboxByRowName();
+    const pipelineRow2 = pipelinesTable.getRowById(mockPipeline2.pipeline_id);
+    pipelineRow2.findRowCheckbox().should('be.enabled').check();
 
     //Delete the selected pipeline and versions
     pipelinesGlobal.findDeleteButton().click();
@@ -905,8 +939,7 @@ describe('Pipelines', () => {
     cy.wait('@refreshVersions').then(() => {
       // Test deleted
       pipelinesTable.shouldRowNotBeVisible(mockPipeline2.display_name);
-      const pipelineTableRow = pipelinesTable.getRowByName(mockPipeline1.display_name);
-      pipelineTableRow.toggleExpandByIndex(0);
+      pipelinesTable.getRowById(mockPipeline1.pipeline_id).findExpandButton().click();
       pipelinesTable.shouldRowNotBeVisible(mockPipeline1Version1.display_name);
     });
   });
@@ -918,7 +951,7 @@ describe('Pipelines', () => {
     // Wait for the pipelines table to load
     pipelinesTable.find();
     pipelinesTable
-      .getRowByName(initialMockPipeline.display_name)
+      .getRowById(initialMockPipeline.pipeline_id)
       .findKebabAction('Create run')
       .click();
     verifyRelativeURL(`/pipelines/${projectName}/pipelineRun/create`);
@@ -930,7 +963,7 @@ describe('Pipelines', () => {
 
     pipelinesTable.find();
     pipelinesTable
-      .getRowByName(initialMockPipeline.display_name)
+      .getRowById(initialMockPipeline.pipeline_id)
       .findKebabAction('Schedule run')
       .click();
 
@@ -943,9 +976,10 @@ describe('Pipelines', () => {
 
     // Wait for the pipelines table to load
     pipelinesTable.find();
-    pipelinesTable.getRowByName(initialMockPipeline.display_name).toggleExpandByIndex(0);
-    pipelinesTable
-      .getRowByName(initialMockPipelineVersion.display_name)
+    const pipelineRow = pipelinesTable.getRowById(initialMockPipeline.pipeline_id);
+    pipelineRow.findExpandButton().click();
+    pipelineRow
+      .getPipelineVersionRowById(initialMockPipelineVersion.pipeline_version_id)
       .findKebabAction('Create run')
       .click();
     verifyRelativeURL(`/pipelines/${projectName}/pipelineRun/create`);
@@ -956,9 +990,10 @@ describe('Pipelines', () => {
     pipelinesGlobal.visit(projectName);
 
     pipelinesTable.find();
-    pipelinesTable.getRowByName(initialMockPipeline.display_name).toggleExpandByIndex(0);
-    pipelinesTable
-      .getRowByName(initialMockPipelineVersion.display_name)
+    const pipelineRow = pipelinesTable.getRowById(initialMockPipeline.pipeline_id);
+    pipelineRow.findExpandButton().click();
+    pipelineRow
+      .getPipelineVersionRowById(initialMockPipelineVersion.pipeline_version_id)
       .findKebabAction('Schedule run')
       .click();
 
@@ -971,9 +1006,10 @@ describe('Pipelines', () => {
 
     // Wait for the pipelines table to load
     pipelinesTable.find();
-    pipelinesTable.getRowByName(initialMockPipeline.display_name).toggleExpandByIndex(0);
-    pipelinesTable
-      .getRowByName(initialMockPipelineVersion.display_name)
+    const pipelineRow = pipelinesTable.getRowById(initialMockPipeline.pipeline_id);
+    pipelineRow.findExpandButton().click();
+    pipelineRow
+      .getPipelineVersionRowById(initialMockPipelineVersion.pipeline_version_id)
       .findKebabAction('View runs')
       .click();
     verifyRelativeURL(`/pipelineRuns/${projectName}?runType=active`);
@@ -984,23 +1020,110 @@ describe('Pipelines', () => {
     pipelinesGlobal.visit(projectName);
 
     pipelinesTable.find();
-    pipelinesTable.getRowByName(initialMockPipeline.display_name).toggleExpandByIndex(0);
-    pipelinesTable
-      .getRowByName(initialMockPipelineVersion.display_name)
+    const pipelineRow = pipelinesTable.getRowById(initialMockPipeline.pipeline_id);
+    pipelineRow.findExpandButton().click();
+    pipelineRow
+      .getPipelineVersionRowById(initialMockPipelineVersion.pipeline_version_id)
       .findKebabAction('View schedules')
       .click();
     verifyRelativeURL(`/pipelineRuns/${projectName}?runType=scheduled`);
+  });
+
+  it('Table pagination', () => {
+    const mockPipelinesV2 = Array.from({ length: 25 }, (_, i) =>
+      buildMockPipelineV2({
+        display_name: `Test pipeline-${i}`,
+      }),
+    );
+    initIntercepts({
+      mockPipelines: mockPipelinesV2.slice(0, 10),
+      totalSize: 25,
+      nextPageToken: 'page-2-token',
+    });
+    pipelinesGlobal.visit(projectName);
+
+    cy.wait('@getPipelines').then((interception) => {
+      expect(interception.request.query).to.eql({
+        sort_by: 'created_at desc',
+        page_size: '10',
+      });
+    });
+
+    pipelinesTable.getRowById(mockPipelinesV2[0].pipeline_id).find().should('exist');
+    pipelinesTable.findRows().should('have.length', '10');
+
+    const pagination = tablePagination.top;
+
+    // test Next button
+    pagination.findPreviousButton().should('be.disabled');
+    cy.interceptOdh(
+      'GET /api/service/pipelines/:namespace/:serviceName/apis/v2beta1/pipelines',
+      {
+        path: { namespace: projectName, serviceName: 'dspa' },
+      },
+      buildMockPipelines(mockPipelinesV2.slice(10, 20), 25),
+    ).as('refreshPipelines');
+
+    pagination.findNextButton().click();
+
+    cy.wait('@refreshPipelines').then((interception) => {
+      expect(interception.request.query).to.eql({
+        sort_by: 'created_at desc',
+        page_size: '10',
+        page_token: 'page-2-token',
+      });
+    });
+
+    pipelinesTable.getRowById(mockPipelinesV2[10].pipeline_id).find().should('exist');
+    pipelinesTable.findRows().should('have.length', '10');
+
+    // test Previous button
+    cy.interceptOdh(
+      'GET /api/service/pipelines/:namespace/:serviceName/apis/v2beta1/pipelines',
+      {
+        path: { namespace: projectName, serviceName: 'dspa' },
+      },
+      buildMockPipelines(mockPipelinesV2.slice(0, 10), 25),
+    ).as('getFirstTenPipelines');
+
+    pagination.findPreviousButton().click();
+
+    cy.wait('@getFirstTenPipelines').then((interception) => {
+      expect(interception.request.query).to.eql({
+        sort_by: 'created_at desc',
+        page_size: '10',
+      });
+    });
+
+    pipelinesTable.getRowById(mockPipelinesV2[0].pipeline_id).find().should('exist');
+
+    // 20 per page
+    cy.interceptOdh(
+      'GET /api/service/pipelines/:namespace/:serviceName/apis/v2beta1/pipelines',
+      {
+        path: { namespace: projectName, serviceName: 'dspa' },
+      },
+      buildMockPipelines(mockPipelinesV2.slice(0, 20), 22),
+    );
+    pagination.selectToggleOption('20 per page');
+    pagination.findPreviousButton().should('be.disabled');
+    pipelinesTable.getRowById(mockPipelinesV2[19].pipeline_id).find().should('exist');
+    pipelinesTable.findRows().should('have.length', '20');
   });
 });
 
 type HandlersProps = {
   isEmpty?: boolean;
   mockPipelines?: PipelineKFv2[];
+  totalSize?: number;
+  nextPageToken?: string | undefined;
 };
 
 const initIntercepts = ({
   isEmpty = false,
   mockPipelines = [initialMockPipeline],
+  totalSize = mockPipelines.length,
+  nextPageToken,
 }: HandlersProps) => {
   cy.interceptK8sList(
     DataSciencePipelineApplicationModel,
@@ -1030,42 +1153,43 @@ const initIntercepts = ({
     ]),
   );
 
-  cy.intercept(
+  cy.interceptOdh(
+    'GET /api/service/pipelines/:namespace/:serviceName/apis/v2beta1/pipelines',
     {
-      pathname: `/api/service/pipelines/${projectName}/dspa/apis/v2beta1/pipelines`,
+      path: { namespace: projectName, serviceName: 'dspa' },
     },
-    buildMockPipelines(mockPipelines),
-  );
+    buildMockPipelines(mockPipelines, totalSize, nextPageToken),
+  ).as('getPipelines');
 
-  cy.intercept(
+  cy.interceptOdh(
+    'GET /api/service/pipelines/:namespace/:serviceName/apis/v2beta1/pipelines/:pipelineId/versions',
     {
-      method: 'GET',
-      pathname: `/api/service/pipelines/${projectName}/dspa/apis/v2beta1/pipelines/${initialMockPipeline.pipeline_id}/versions`,
+      path: {
+        namespace: projectName,
+        serviceName: 'dspa',
+        pipelineId: initialMockPipeline.pipeline_id,
+      },
     },
     buildMockPipelineVersionsV2([initialMockPipelineVersion]),
   );
 };
 
 const createDeleteVersionIntercept = (pipelineId: string, pipelineVersionId: string) =>
-  cy.intercept(
+  cy.interceptOdh(
+    'DELETE /api/service/pipelines/:namespace/:serviceName/apis/v2beta1/pipelines/:pipelineId/versions/:pipelineVersionId',
     {
-      pathname: `/api/service/pipelines/${projectName}/dspa/apis/v2beta1/pipelines/${pipelineId}/versions/${pipelineVersionId}`,
-      method: 'DELETE',
+      path: { namespace: projectName, serviceName: 'dspa', pipelineId, pipelineVersionId },
       times: 1,
     },
-    {
-      body: {},
-    },
+    mockSuccessGoogleRpcStatus({}),
   );
 
 const createDeletePipelineIntercept = (pipelineId: string) =>
-  cy.intercept(
+  cy.interceptOdh(
+    'DELETE /api/service/pipelines/:namespace/:serviceName/apis/v2beta1/pipelines/:pipelineId',
     {
-      pathname: `/api/service/pipelines/${projectName}/dspa/apis/v2beta1/pipelines/${pipelineId}`,
-      method: 'DELETE',
+      path: { namespace: projectName, serviceName: 'dspa', pipelineId },
       times: 1,
     },
-    {
-      body: {},
-    },
+    mockSuccessGoogleRpcStatus({}),
   );

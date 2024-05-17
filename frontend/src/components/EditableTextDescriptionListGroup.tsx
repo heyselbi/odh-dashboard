@@ -10,6 +10,7 @@ type EditableTextDescriptionListGroupProps = Pick<
 > & {
   value: string;
   saveEditedValue: (value: string) => Promise<void>;
+  testid?: string;
 };
 
 const EditableTextDescriptionListGroup: React.FC<EditableTextDescriptionListGroupProps> = ({
@@ -17,6 +18,7 @@ const EditableTextDescriptionListGroup: React.FC<EditableTextDescriptionListGrou
   contentWhenEmpty,
   value,
   saveEditedValue,
+  testid,
 }) => {
   const [isEditing, setIsEditing] = React.useState(false);
   const [unsavedValue, setUnsavedValue] = React.useState(value);
@@ -37,6 +39,8 @@ const EditableTextDescriptionListGroup: React.FC<EditableTextDescriptionListGrou
           value={unsavedValue}
           onChange={(_event, v) => setUnsavedValue(v)}
           isDisabled={isSavingEdits}
+          rows={24}
+          resizeOrientation="vertical"
         />
       }
       onEditClick={() => {
@@ -58,6 +62,7 @@ const EditableTextDescriptionListGroup: React.FC<EditableTextDescriptionListGrou
       }}
     >
       <ExpandableSection
+        data-testid={testid}
         variant="truncate"
         truncateMaxLines={12}
         toggleText={isTextExpanded ? 'Show less' : 'Show more'}

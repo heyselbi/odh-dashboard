@@ -33,6 +33,7 @@ export type DashboardConfig = K8sResourceCommon & {
       disablePerformanceMetrics: boolean;
       disableKServe: boolean;
       disableKServeAuth: boolean;
+      disableKServeMetrics: boolean;
       disableModelMesh: boolean;
       disableAcceleratorProfiles: boolean;
       disablePipelineExperiments: boolean;
@@ -739,7 +740,12 @@ export type DetectedAccelerators = {
 
 export type EnvironmentVariable = EitherNotBoth<
   { value: string | number },
-  { valueFrom: Record<string, unknown> }
+  {
+    valueFrom: Record<string, unknown> & {
+      configMapKeyRef?: { key: string; name: string };
+      secretKeyRef?: { key: string; name: string };
+    };
+  }
 > & {
   name: string;
 };
@@ -1024,6 +1030,36 @@ export type TrustyAIKind = K8sResourceCommon & {
 };
 
 export type ModelRegistryKind = K8sResourceCommon & {
+  metadata: {
+    name: string;
+    namespace: string;
+  };
+  spec: {
+    grpc: {
+      port: number;
+    };
+    rest: {
+      port: number;
+      serviceRoute: string;
+    };
+    mysql?: {
+      database: string;
+      host: string;
+      port?: number;
+    };
+    postgres: {
+      database: string;
+      host?: string;
+      passwordSecret?: {
+        key: string;
+        name: string;
+      };
+      port: number;
+      skipDBCreation?: boolean;
+      sslMode?: string;
+      username?: string;
+    };
+  };
   status?: {
     conditions?: K8sCondition[];
   };

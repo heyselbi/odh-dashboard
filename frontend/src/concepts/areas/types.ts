@@ -6,8 +6,7 @@ import {
   DataScienceClusterKindStatus,
 } from '~/k8sTypes';
 
-// TODO: clean up this definition / update the DashboardConfig to a better state
-export type FeatureFlag = keyof Omit<DashboardCommonConfig, 'modelMetricsNamespace'>;
+export type FeatureFlag = keyof DashboardCommonConfig;
 
 export type IsAreaAvailableStatus = {
   /** A single boolean status */
@@ -46,6 +45,7 @@ export enum SupportedArea {
   CUSTOM_RUNTIMES = 'custom-serving-runtimes',
   K_SERVE = 'kserve',
   K_SERVE_AUTH = 'kserve-auth',
+  K_SERVE_METRICS = 'kserve-metrics',
   MODEL_MESH = 'model-mesh',
   BIAS_METRICS = 'bias-metrics',
   PERFORMANCE_METRICS = 'performance-metrics',

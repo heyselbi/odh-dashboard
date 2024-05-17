@@ -27,9 +27,9 @@ The following are a list of features that are supported, along with there defaul
 | disableCustomServingRuntimes | false   | Disables Custom Serving Runtimes from the Admin Panel.                                               |
 | disableKServe                | false   | Disables the ability to select KServe as a Serving Platform.                                         |
 | disableKServeAuth            | false   | Disables the ability to use auth in KServe.                                                          |
+| disableKServeMetrics         | true    | Disables the ability to see KServe Metrics.                                                          |
 | disableModelMesh             | false   | Disables the ability to select ModelMesh as a Serving Platform.                                      |
 | disableAcceleratorProfiles   | false   | Disables Accelerator profiles from the Admin Panel.                                                  |
-| modelMetricsNamespace        | false   | Enables the namespace in which the Model Serving Metrics' Prometheus Operator is installed.          |
 | disableBiasMetrics           | false   | Disables Model Bias tab from Model Serving metrics.                                                  |
 | disablePerformanceMetrics    | false   | Disables Endpoint Performance tab from Model Serving metrics.                                        |
 | disableDistributedWorkloads  | false   | Disables Distributed Workload Metrics from the dashboard.                                            |
@@ -58,7 +58,7 @@ spec:
     disableProjectSharing: false
     disableCustomServingRuntimes: false
     disableAcceleratorProfiles: false
-    modelMetricsNamespace: ''
+    disableKServeMetrics: true
     disableBiasMetrics: false
     disablePerformanceMetrics: false
     disablePipelineExperiments: false
@@ -153,7 +153,7 @@ spec:
     disableProjectSharing: true
     disableCustomServingRuntimes: false
     disableAcceleratorProfiles: true
-    modelMetricsNamespace: ''
+    disableKServeMetrics: true
     disableBiasMetrics: false
     disablePerformanceMetrics: false
     disablePipelineExperiments: true
